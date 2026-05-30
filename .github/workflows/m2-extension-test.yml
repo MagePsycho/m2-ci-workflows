@@ -124,26 +124,28 @@ jobs:
           magento_version: '2.4.9'
           module_source: ${{ inputs.module_source }}
 
+  # Informational checks during pilot: existing modules have pre-pilot lint
+  # debt; install-verify is the load-bearing "is the module functional?"
+  # signal. continue-on-error is on the step (not the job) so the check on
+  # the PR shows SUCCESS even when findings exist — job-level would still
+  # show FAILURE in the PR's checks list.
   coding-standard:
     name: Magento Coding Standard
     runs-on: ubuntu-latest
-    # Informational during pilot: existing modules have pre-pilot lint debt
-    # that should be triaged in a separate effort, not block CI from going
-    # green on install-verify (the real "is the module functional?" signal).
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: extdn/github-actions-m2/magento-coding-standard/8.3@master
+        continue-on-error: true
         with:
           phpcs_severity: 8
 
   phpstan:
     name: PHPStan (M2-aware)
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: extdn/github-actions-m2/magento-phpstan/8.3@master
+        continue-on-error: true
         with:
           composer_name: ${{ inputs.composer_name }}
           module_source: ${{ inputs.module_source }}
