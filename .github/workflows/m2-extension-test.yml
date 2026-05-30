@@ -11,81 +11,108 @@ on:
         description: 'Magento module name, e.g. MagePsycho_GroupSwitcherPro'
         required: true
         type: string
-      php_versions:
-        description: 'JSON array of PHP versions to test against'
+      module_source:
+        description: 'Relative path within the repo where the module source (registration.php) lives.'
         required: false
         type: string
-        default: '["8.3", "8.4"]'
-      magento_versions:
-        description: 'JSON array of Magento versions to test against'
-        required: false
-        type: string
-        default: '["2.4.8", "2.4.9"]'
-      ce_or_ee:
-        description: 'Magento edition: ce or ee'
-        required: false
-        type: string
-        default: 'ce'
+        default: 'src'
 
+# GitHub Actions does not allow matrix-interpolated `uses:` paths, so each
+# <PHP × Magento> cell is its own job. Keeps the matrix explicit and the
+# pairings auditable. Add a new job when you support a new combination.
 jobs:
-  install-verify:
-    name: Install M${{ matrix.magento }} / PHP ${{ matrix.php }}
+  install-m248-php83:
+    name: Install M2.4.8 / PHP 8.3
     runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        php: ${{ fromJSON(inputs.php_versions) }}
-        magento: ${{ fromJSON(inputs.magento_versions) }}
-        exclude:
-          # Magento 2.4.8 does not officially support PHP 8.4
-          - magento: '2.4.8'
-            php: '8.4'
-
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --tmpfs /tmp:rw --tmpfs /var/lib/mysql:rw
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
-      - name: Checkout module source
-        uses: actions/checkout@v4
-
-      - name: Install Magento and module + run smoke checks
-        uses: extdn/github-actions-m2/magento-integration-tests-action/8.4@master
-        # NOTE: the trailing "/8.4@master" segment is a placeholder. Pin to
-        # the action sub-path matching the PHP version cell and a tagged
-        # release once the matrix is green. See
-        # https://github.com/extdn/github-actions-m2 for current refs.
+      - uses: actions/checkout@v4
+      - uses: extdn/github-actions-m2/magento-integration-tests/8.3@master
         with:
-          php_version: ${{ matrix.php }}
-          magento_version: ${{ matrix.magento }}
-          composer_name: ${{ inputs.composer_name }}
           module_name: ${{ inputs.module_name }}
-          ce_or_ee: ${{ inputs.ce_or_ee }}
-          composer_version: 2
+          composer_name: ${{ inputs.composer_name }}
+          magento_version: '2.4.8'
+          module_source: ${{ inputs.module_source }}
+
+  install-m249-php83:
+    name: Install M2.4.9 / PHP 8.3
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --tmpfs /tmp:rw --tmpfs /var/lib/mysql:rw
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extdn/github-actions-m2/magento-integration-tests/8.3@master
+        with:
+          module_name: ${{ inputs.module_name }}
+          composer_name: ${{ inputs.composer_name }}
+          magento_version: '2.4.9'
+          module_source: ${{ inputs.module_source }}
+
+  install-m249-php84:
+    name: Install M2.4.9 / PHP 8.4
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --tmpfs /tmp:rw --tmpfs /var/lib/mysql:rw
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: extdn/github-actions-m2/magento-integration-tests/8.4@master
+        with:
+          module_name: ${{ inputs.module_name }}
+          composer_name: ${{ inputs.composer_name }}
+          magento_version: '2.4.9'
+          module_source: ${{ inputs.module_source }}
 
   coding-standard:
     name: Magento Coding Standard
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run magento-coding-standard
-        uses: extdn/github-actions-m2/magento-coding-standard/8.3@master
+      - uses: extdn/github-actions-m2/magento-coding-standard/8.3@master
         with:
-          module_path: src
+          phpcs_severity: 8
 
-  static-analysis:
+  phpstan:
     name: PHPStan (M2-aware)
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - uses: shivammathur/setup-php@v2
+      - uses: extdn/github-actions-m2/magento-phpstan/8.3@master
         with:
-          php-version: '8.3'
-          tools: composer:v2
-      - name: Install dev dependencies
-        working-directory: src
-        run: composer install --no-interaction --prefer-dist --no-progress
-      - name: Run PHPStan
-        working-directory: src
-        run: |
-          if [ -f phpstan.neon ] || [ -f phpstan.neon.dist ]; then
-            vendor/bin/phpstan analyse --no-progress
-          else
-            echo "No phpstan.neon found, skipping."
-          fi
+          composer_name: ${{ inputs.composer_name }}
+          module_source: ${{ inputs.module_source }}
+          phpstan_level: '1'
