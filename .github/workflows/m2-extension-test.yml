@@ -19,7 +19,8 @@ on:
 
 # GitHub Actions does not allow matrix-interpolated `uses:` paths, so each
 # <PHP × Magento> cell is its own job. Keeps the matrix explicit and the
-# pairings auditable. Add a new job when you support a new combination.
+# pairings auditable. The services block is duplicated because GHA does
+# not support YAML anchors in workflow files.
 jobs:
   install-m248-php83:
     name: Install M2.4.8 / PHP 8.3
@@ -29,14 +30,23 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-        ports:
-          - 3306:3306
+        ports: ['3306:3306']
         options: >-
           --tmpfs /tmp:rw --tmpfs /var/lib/mysql:rw
           --health-cmd="mysqladmin ping"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+      es:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.22
+        ports: ['9200:9200', '9300:9300']
+        options: >-
+          -e="discovery.type=single-node"
+          -e="xpack.security.enabled=false"
+          --health-cmd="curl -s http://localhost:9200/_cluster/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: extdn/github-actions-m2/magento-integration-tests/8.3@master
@@ -54,14 +64,23 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-        ports:
-          - 3306:3306
+        ports: ['3306:3306']
         options: >-
           --tmpfs /tmp:rw --tmpfs /var/lib/mysql:rw
           --health-cmd="mysqladmin ping"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+      es:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.22
+        ports: ['9200:9200', '9300:9300']
+        options: >-
+          -e="discovery.type=single-node"
+          -e="xpack.security.enabled=false"
+          --health-cmd="curl -s http://localhost:9200/_cluster/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: extdn/github-actions-m2/magento-integration-tests/8.3@master
@@ -79,14 +98,23 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-        ports:
-          - 3306:3306
+        ports: ['3306:3306']
         options: >-
           --tmpfs /tmp:rw --tmpfs /var/lib/mysql:rw
           --health-cmd="mysqladmin ping"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+      es:
+        image: docker.elastic.co/elasticsearch/elasticsearch:7.17.22
+        ports: ['9200:9200', '9300:9300']
+        options: >-
+          -e="discovery.type=single-node"
+          -e="xpack.security.enabled=false"
+          --health-cmd="curl -s http://localhost:9200/_cluster/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
     steps:
       - uses: actions/checkout@v4
       - uses: extdn/github-actions-m2/magento-integration-tests/8.4@master
